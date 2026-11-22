@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { env } from "@/lib/env";
+import { safeStorage } from "@/lib/storage";
 import { getSupabase } from "@/lib/supabase";
 import type { AppUser, TeamRole } from "@/lib/types";
 import { sha256Hex, sleep } from "@/lib/utils";
@@ -39,7 +40,7 @@ async function signDemo(email: string, exp: number) {
 
 async function readDemoSession(): Promise<DemoSession | null> {
   try {
-    const raw = localStorage.getItem(DEMO_SESSION_KEY);
+    const raw = safeStorage.get(DEMO_SESSION_KEY);
     if (!raw) return null;
     const sess = JSON.parse(raw) as DemoSession;
     if (sess.exp < Date.now()) return null;
@@ -52,7 +53,7 @@ async function readDemoSession(): Promise<DemoSession | null> {
 
 function lockState(): { attempts: number; until: number } {
   try {
-    return JSON.parse(localStorage.getItem(LOCK_KEY) ?? "") as { attempts: number; until: number };
+    return JSON.parse(safeStorage.get(LOCK_KEY) ?? "") as { attempts: number; until: number };
   } catch {
     return { attempts: 0, until: 0 };
   }
@@ -62,7 +63,7 @@ function registerFailure() {
   const s = lockState();
   const attempts = s.attempts + 1;
   const until = attempts >= MAX_ATTEMPTS ? Date.now() + LOCK_MS : 0;
-  localStorage.setItem(LOCK_KEY, JSON.stringify({ attempts: until ? 0 : attempts, until }));
+  safeStorage.set(LOCK_KEY, JSON.stringify({ attempts: until ? 0 : attempts, until }));
 }
 
 function assertNotLocked() {
@@ -157,10 +158,10 @@ export const useAuth = create<AuthState>((set, get) => ({
         registerFailure();
         throw new Error("Nesprávný e-mail nebo heslo.");
       }
-      localStorage.removeItem(LOCK_KEY);
+      safeStorage.remove(LOCK_KEY);
       const exp = Date.now() + SESSION_TTL_MS;
       const sess: DemoSession = { email, name: env.demo.name, exp, sig: await signDemo(email, exp) };
-      localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(sess));
+      safeStorage.set(DEMO_SESSION_KEY, JSON.stringify(sess));
       set({
         status: "authenticated",
         user: { id: "demo-admin", email, fullName: env.demo.name, role: "admin", mode: "demo" },
@@ -173,14 +174,14 @@ export const useAuth = create<AuthState>((set, get) => ({
       registerFailure();
       throw new Error(error?.message === "Invalid login credentials" ? "Nesprávný e-mail nebo heslo." : error?.message ?? "Přihlášení selhalo.");
     }
-    localStorage.removeItem(LOCK_KEY);
+    safeStorage.remove(LOCK_KEY);
     const user = await loadSupabaseProfile(data.user.id, data.user.email ?? email);
     set({ status: "authenticated", user });
   },
 
   signOut: async () => {
     if (env.authMode === "demo") {
-      localStorage.removeItem(DEMO_SESSION_KEY);
+      safeStorage.remove(DEMO_SESSION_KEY);
     } else {
       await getSupabase()!.auth.signOut();
     }

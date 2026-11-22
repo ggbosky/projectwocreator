@@ -10,6 +10,7 @@ interface ImportMetaEnv {
   readonly VITE_CRM_WEBHOOK_URL?: string;
   readonly VITE_CRM_DASHBOARD_URL?: string;
   readonly VITE_BASE_PATH?: string;
+  readonly VITE_ROUTER?: string;
 }
 
 interface ImportMeta {
