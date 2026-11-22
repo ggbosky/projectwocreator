@@ -1,0 +1,235 @@
+import { create } from "zustand";
+import { SEED_BRAND } from "@/data/seed";
+import { getRepository } from "@/lib/repo";
+import type { BrandProfile, ContentItem, ContentStatus, Creator, GeneratedContent, ViralPost } from "@/lib/types";
+import { uid } from "@/lib/utils";
+
+interface DataState {
+  ready: boolean;
+  loading: boolean;
+  error: string | null;
+  brand: BrandProfile;
+  creators: Creator[];
+  posts: ViralPost[];
+  content: ContentItem[];
+
+  load: () => Promise<void>;
+  clear: () => void;
+  saveBrand: (brand: BrandProfile) => Promise<void>;
+
+  upsertCreators: (creators: Creator[]) => Promise<void>;
+  deleteCreator: (id: string) => Promise<void>;
+  upsertPosts: (posts: ViralPost[]) => Promise<ViralPost[]>;
+  toggleSwipe: (id: string) => Promise<boolean>;
+  deletePost: (id: string) => Promise<void>;
+
+  createContent: (input: {
+    title: string;
+    topic: string;
+    format: ContentItem["format"];
+    platform: ContentItem["platform"];
+    status?: ContentStatus;
+    output?: GeneratedContent;
+    referencePostId?: string;
+    notes?: string;
+  }) => Promise<ContentItem>;
+  updateContent: (id: string, patch: Partial<ContentItem>) => Promise<void>;
+  moveContent: (id: string, status: ContentStatus, beforeId?: string | null) => Promise<void>;
+  scheduleContent: (id: string, date: string | null) => Promise<void>;
+  deleteContent: (id: string) => Promise<void>;
+  markSynced: (ids: string[]) => Promise<void>;
+
+  seedSample: () => Promise<void>;
+  reset: () => Promise<void>;
+}
+
+function replace<T extends { id: string }>(list: T[], items: T[]) {
+  const map = new Map(list.map((x) => [x.id, x]));
+  items.forEach((i) => map.set(i.id, i));
+  return [...map.values()];
+}
+
+/**
+ * Global data store. Mutations are optimistic: the UI updates instantly and
+ * rolls back if persistence fails (the caller shows the toast).
+ */
+export const useData = create<DataState>((set, get) => ({
+  ready: false,
+  loading: false,
+  error: null,
+  brand: SEED_BRAND,
+  creators: [],
+  posts: [],
+  content: [],
+
+  load: async () => {
+    set({ loading: true, error: null });
+    try {
+      const snap = await getRepository().loadAll();
+      set({ ...snap, ready: true, loading: false });
+    } catch (e) {
+      set({ loading: false, error: (e as Error).message, ready: true });
+    }
+  },
+
+  clear: () => set({ ready: false, creators: [], posts: [], content: [], brand: SEED_BRAND }),
+
+  saveBrand: async (brand) => {
+    const prev = get().brand;
+    set({ brand });
+    try {
+      const saved = await getRepository().saveBrand(brand);
+      set({ brand: saved });
+    } catch (e) {
+      set({ brand: prev });
+      throw e;
+    }
+  },
+
+  upsertCreators: async (creators) => {
+    const saved = await getRepository().upsertCreators(creators);
+    set({ creators: replace(get().creators, saved.length ? saved : creators) });
+  },
+
+  deleteCreator: async (id) => {
+    const prev = get().creators;
+    set({ creators: prev.filter((c) => c.id !== id) });
+    try {
+      await getRepository().deleteCreator(id);
+    } catch (e) {
+      set({ creators: prev });
+      throw e;
+    }
+  },
+
+  upsertPosts: async (posts) => {
+    const saved = await getRepository().upsertPosts(posts);
+    const result = saved.length ? saved : posts;
+    set({ posts: replace(get().posts, result) });
+    return result;
+  },
+
+  toggleSwipe: async (id) => {
+    const prev = get().posts;
+    const post = prev.find((p) => p.id === id);
+    if (!post) return false;
+    const next = { ...post, savedToSwipe: !post.savedToSwipe };
+    set({ posts: replace(prev, [next]) });
+    try {
+      await getRepository().upsertPosts([next]);
+      return next.savedToSwipe;
+    } catch (e) {
+      set({ posts: prev });
+      throw e;
+    }
+  },
+
+  deletePost: async (id) => {
+    const prev = get().posts;
+    set({ posts: prev.filter((p) => p.id !== id) });
+    try {
+      await getRepository().deletePost(id);
+    } catch (e) {
+      set({ posts: prev });
+      throw e;
+    }
+  },
+
+  createContent: async (input) => {
+    const status = input.status ?? (input.output ? "generated" : "idea");
+    const siblings = get().content.filter((c) => c.status === status);
+    const now = new Date().toISOString();
+    const item: ContentItem = {
+      id: uid(),
+      title: input.title,
+      topic: input.topic,
+      format: input.format,
+      platform: input.platform,
+      status,
+      output: input.output,
+      referencePostId: input.referencePostId,
+      notes: input.notes ?? "",
+      position: siblings.length ? Math.min(...siblings.map((s) => s.position)) - 1 : 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+    set({ content: [...get().content, item] });
+    try {
+      const [saved] = await getRepository().upsertContent([item]);
+      if (saved) set({ content: replace(get().content, [saved]) });
+      return saved ?? item;
+    } catch (e) {
+      set({ content: get().content.filter((c) => c.id !== item.id) });
+      throw e;
+    }
+  },
+
+  updateContent: async (id, patch) => {
+    const prev = get().content;
+    const cur = prev.find((c) => c.id === id);
+    if (!cur) return;
+    const next = { ...cur, ...patch };
+    set({ content: replace(prev, [next]) });
+    try {
+      await getRepository().upsertContent([next]);
+    } catch (e) {
+      set({ content: prev });
+      throw e;
+    }
+  },
+
+  moveContent: async (id, status, beforeId) => {
+    const prev = get().content;
+    const cur = prev.find((c) => c.id === id);
+    if (!cur) return;
+    const column = prev.filter((c) => c.status === status && c.id !== id).sort((a, b) => a.position - b.position);
+    let position: number;
+    const idx = beforeId ? column.findIndex((c) => c.id === beforeId) : -1;
+    if (idx === -1) position = column.length ? column[column.length - 1].position + 1 : 0;
+    else if (idx === 0) position = column[0].position - 1;
+    else position = (column[idx - 1].position + column[idx].position) / 2;
+    if (cur.status === status && cur.position === position) return;
+    const next = { ...cur, status, position };
+    set({ content: replace(prev, [next]) });
+    try {
+      await getRepository().upsertContent([next]);
+    } catch (e) {
+      set({ content: prev });
+      throw e;
+    }
+  },
+
+  scheduleContent: async (id, date) => {
+    await get().updateContent(id, { scheduledFor: date ?? undefined });
+  },
+
+  deleteContent: async (id) => {
+    const prev = get().content;
+    set({ content: prev.filter((c) => c.id !== id) });
+    try {
+      await getRepository().deleteContent(id);
+    } catch (e) {
+      set({ content: prev });
+      throw e;
+    }
+  },
+
+  markSynced: async (ids) => {
+    const now = new Date().toISOString();
+    const items = get()
+      .content.filter((c) => ids.includes(c.id))
+      .map((c) => ({ ...c, crmSyncedAt: now }));
+    set({ content: replace(get().content, items) });
+    await getRepository().upsertContent(items);
+  },
+
+  seedSample: async () => {
+    const snap = await getRepository().seedSample();
+    set({ ...snap });
+  },
+
+  reset: async () => {
+    const snap = await getRepository().reset();
+    set({ ...snap });
+  },
+}));

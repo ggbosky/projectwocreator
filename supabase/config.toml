@@ -1,0 +1,38 @@
+# Supabase CLI config (local development: `supabase start`).
+# In the hosted project apply the same auth settings in the dashboard (see docs/SETUP.md).
+project_id = "projectwo-creator"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+
+[db]
+port = 54322
+major_version = 15
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173/reset-password"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+# Invite-only: nobody can create an account from the login page.
+enable_signup = false
+minimum_password_length = 10
+
+[auth.email]
+enable_signup = false
+double_confirm_changes = true
+enable_confirmations = true
+
+[functions.ai-generate]
+verify_jwt = true
+[functions.ai-analyze]
+verify_jwt = true
+[functions.viral-radar]
+verify_jwt = true
+[functions.crm-sync]
+verify_jwt = true
+[functions.admin-users]
+verify_jwt = true
