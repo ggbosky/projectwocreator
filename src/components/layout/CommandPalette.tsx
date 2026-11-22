@@ -30,6 +30,8 @@ export function CommandPalette() {
       ...NAV.map((n) => ({ id: n.to, label: n.label, hint: "Přejít", icon: <n.icon />, run: go(n.to) })),
       { id: "new-reel", label: "Nový scénář pro Reel", hint: "Studio", icon: <Sparkles />, run: go("/studio?format=reel") },
       { id: "new-carousel", label: "Nový karusel", hint: "Studio", icon: <Wand2 />, run: go("/studio?format=carousel") },
+      { id: "trends-scout", label: "Najít aktuální trendy", hint: "Trend Radar", icon: <Sparkles />, run: go("/trends") },
+      { id: "new-video", label: "Nové AI video", hint: "Video Studio", icon: <Wand2 />, run: go("/video") },
       { id: "analyze", label: "Analyzovat odkaz na virální post", hint: "Radar", icon: <Link2 />, run: go("/radar?analyze=1") },
       { id: "theme", label: "Přepnout světlý / tmavý režim", icon: <Moon />, run: toggleTheme },
       {

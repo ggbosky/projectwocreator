@@ -1,6 +1,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  AtSign,
+  Clapperboard,
   Copy,
+  Flame,
   FileText,
   Film,
   KanbanSquare,
@@ -10,7 +13,6 @@ import {
   RefreshCw,
   Send,
   Sparkles,
-  AtSign,
   Wand2,
   X,
 } from "lucide-react";
@@ -24,7 +26,8 @@ import { Button } from "@/components/ui/button";
 import { Field, Select, Textarea } from "@/components/ui/input";
 import { PageHeader, ViralScore } from "@/components/ui/misc";
 import { Skeleton } from "@/components/ui/skeleton";
-import { aiEngineLabel, generateContent } from "@/lib/ai/service";
+import { generateContent } from "@/lib/ai/service";
+import { useEngine } from "@/lib/ai/useEngine";
 import { buildCrmPayload, sendToCrm } from "@/lib/crm";
 import { fullText } from "@/lib/exportText";
 import type { ContentFormat, GenerateRequest, GeneratedContent, Platform } from "@/lib/types";
@@ -53,6 +56,10 @@ export default function StudioPage() {
 
   const refId = params.get("ref");
   const reference = useMemo(() => posts.find((p) => p.id === refId), [posts, refId]);
+  const trends = useData((s) => s.trends);
+  const trendId = params.get("trend");
+  const trend = useMemo(() => trends.find((t) => t.id === trendId), [trends, trendId]);
+  const { engine, label: aiEngineLabel } = useEngine();
 
   const initialFormat = (params.get("format") as ContentFormat) || reference?.format || "reel";
   const [format, setFormat] = useState<ContentFormat>(FORMATS.some((f) => f.value === initialFormat) ? initialFormat : "reel");
@@ -74,6 +81,17 @@ export default function StudioPage() {
       setPlatform(reference.platform === "youtube" ? "instagram" : reference.platform);
     }
   }, [reference]);
+
+  useEffect(() => {
+    const idea = params.get("idea");
+    if (trend && !topic) setTopic(idea || trend.ideas[0]?.title || trend.name);
+    const f = params.get("format") as ContentFormat | null;
+    if (trend && f && FORMATS.some((x) => x.value === f)) {
+      setFormat(f);
+      setPlatform(FORMATS.find((x) => x.value === f)!.platform);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trend]);
 
   useEffect(() => {
     if (!personaId && brand.personas[0]) setPersonaId(brand.personas[0].id);
@@ -98,7 +116,7 @@ export default function StudioPage() {
     setSavedId(null);
     try {
       const res = await generateContent(
-        { format, platform, topic: topic.trim(), goal, personaId, reference, extraInstructions: extra.trim() || undefined },
+        { format, platform, topic: topic.trim(), goal, personaId, reference, trend, extraInstructions: extra.trim() || undefined },
         brand,
       );
       setOutput(res);
@@ -171,7 +189,7 @@ export default function StudioPage() {
         title="Z inspirace"
         accent="hotový obsah"
         description="Vyberte referenci z radaru, zadejte téma a nechte AI napsat hooky, scénář po vteřinách, vizuální pokyny i popisek — v tónu Project Two."
-        actions={<Badge tone={aiEngineLabel.startsWith("Claude") ? "success" : "warning"}>{aiEngineLabel}</Badge>}
+        actions={<Badge tone={engine === "local" ? "warning" : "success"}>AI: {aiEngineLabel}</Badge>}
       />
 
       <div className="grid gap-6 xl:grid-cols-[400px_minmax(0,1fr)]">
@@ -179,6 +197,25 @@ export default function StudioPage() {
         <div className="card h-fit space-y-5 p-5 xl:sticky xl:top-20">
           {/* Reference */}
           <div>
+            {trend && (
+              <div className="mb-4 flex items-center gap-3 rounded-xl border border-info/30 bg-info/[0.06] p-3">
+                <Flame className="size-5 shrink-0 text-brand" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs text-subtle">Trend-jacking</div>
+                  <p className="truncate text-sm font-medium">{trend.name}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    params.delete("trend");
+                    setParams(params, { replace: true });
+                  }}
+                  className="rounded-lg p-1 text-subtle hover:bg-elevated hover:text-fg"
+                  aria-label="Odebrat trend"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            )}
             <div className="label mb-2">Reference (remix)</div>
             {reference ? (
               <div className="flex items-center gap-3 rounded-xl border border-brand/30 bg-brand/[0.06] p-3">
@@ -349,6 +386,11 @@ export default function StudioPage() {
                     <Button variant="outline" size="sm" onClick={generate}>
                       <RefreshCw /> Znovu
                     </Button>
+                    {(output.format === "reel" || output.script.length > 0) && (
+                      <Button variant="outline" size="sm" onClick={() => navigate("/video", { state: { output, trendId: trend?.id } })}>
+                        <Clapperboard /> Udělat video
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={crm}>
                       <Send /> Do CRM
                     </Button>

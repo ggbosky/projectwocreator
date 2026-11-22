@@ -11,7 +11,7 @@ import {
 } from "@dnd-kit/core";
 import { format, parseISO } from "date-fns";
 import { cs } from "date-fns/locale";
-import { CalendarDays, KanbanSquare, Plus, Send } from "lucide-react";
+import { CalendarDays, Eraser, KanbanSquare, Plus, Send } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ContentCalendar } from "@/components/pipeline/Calendar";
@@ -36,6 +36,23 @@ export default function PipelinePage() {
   const [detail, setDetail] = useState<ContentItem | null>(null);
   const [newIn, setNewIn] = useState<ContentStatus | null>(null);
   const [crmOpen, setCrmOpen] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const deleteContent = useData((s) => s.deleteContent);
+
+  const clearAll = async () => {
+    if (!confirmClear) {
+      setConfirmClear(true);
+      setTimeout(() => setConfirmClear(false), 4000);
+      return;
+    }
+    setConfirmClear(false);
+    try {
+      for (const c of content) await deleteContent(c.id);
+      toast.success("Pipeline je prázdná");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -96,6 +113,11 @@ export default function PipelinePage() {
         description="Přetahujte karty mezi fázemi a do kalendáře. Hotový obsah pošlete jedním klikem do Project Two CRM."
         actions={
           <>
+            {content.length > 0 && (
+              <Button variant={confirmClear ? "danger" : "ghost"} onClick={clearAll}>
+                <Eraser /> {confirmClear ? `Smazat všech ${content.length}?` : "Vyprázdnit"}
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setNewIn("idea")}>
               <Plus /> Nový nápad
             </Button>

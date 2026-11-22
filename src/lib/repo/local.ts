@@ -1,5 +1,6 @@
 import { SEED_BRAND, SEED_CONTENT, SEED_CREATORS, SEED_POSTS } from "@/data/seed";
-import type { BrandProfile, ContentItem, Creator, ViralPost } from "@/lib/types";
+import { SEED_TRENDS } from "@/data/trends";
+import type { BrandProfile, ContentItem, Creator, Trend, VideoProject, ViralPost } from "@/lib/types";
 import type { Repository, Snapshot } from "./types";
 
 const KEY = "pw-creator-data-v1";
@@ -7,7 +8,17 @@ const KEY = "pw-creator-data-v1";
 function read(): Snapshot | null {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Snapshot) : null;
+    if (!raw) return null;
+    const s = JSON.parse(raw) as Partial<Snapshot>;
+    // Migrate snapshots saved by older versions of the app.
+    return {
+      ...defaults(),
+      ...s,
+      // The pipeline starts empty: drop the sample cards older versions seeded.
+      content: (s.content ?? []).filter((c) => !c.id.startsWith("ci_seed_")),
+      trends: s.trends ?? structuredClone(SEED_TRENDS),
+      videos: s.videos ?? [],
+    } as Snapshot;
   } catch {
     return null;
   }
@@ -22,7 +33,7 @@ function write(s: Snapshot) {
 }
 
 function defaults(): Snapshot {
-  return structuredClone({ brand: SEED_BRAND, creators: SEED_CREATORS, posts: SEED_POSTS, content: SEED_CONTENT });
+  return structuredClone({ brand: SEED_BRAND, creators: SEED_CREATORS, posts: SEED_POSTS, content: [] as ContentItem[], trends: SEED_TRENDS, videos: [] as VideoProject[] });
 }
 
 function upsert<T extends { id: string }>(list: T[], items: T[]): T[] {
@@ -85,12 +96,33 @@ export class LocalRepository implements Repository {
     this.commit({ content: this.state.content.filter((c) => c.id !== id) });
   }
 
+  async upsertTrends(trends: Trend[]) {
+    this.commit({ trends: upsert(this.state.trends, trends) });
+    return trends;
+  }
+
+  async deleteTrend(id: string) {
+    this.commit({ trends: this.state.trends.filter((t) => t.id !== id) });
+  }
+
+  async upsertVideos(videos: VideoProject[]) {
+    const now = new Date().toISOString();
+    const stamped = videos.map((v) => ({ ...v, updatedAt: now }));
+    this.commit({ videos: upsert(this.state.videos, stamped) });
+    return stamped;
+  }
+
+  async deleteVideo(id: string) {
+    this.commit({ videos: this.state.videos.filter((v) => v.id !== id) });
+  }
+
   async seedSample() {
     const d = defaults();
     this.commit({
       creators: upsert(this.state.creators, d.creators),
       posts: upsert(this.state.posts, d.posts),
-      content: upsert(this.state.content, d.content),
+      content: upsert(this.state.content, structuredClone(SEED_CONTENT)),
+      trends: upsert(this.state.trends, d.trends),
     });
     return this.loadAll();
   }

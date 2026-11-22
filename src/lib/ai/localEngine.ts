@@ -282,7 +282,45 @@ function hashtags(req: GenerateRequest, brand: BrandProfile): string[] {
   return Array.from(new Set([...base, ...topicTags, ...(platformTags[req.platform] ?? [])])).slice(0, req.platform === "linkedin" ? 4 : 12);
 }
 
+function thenNowSlides(req: GenerateRequest, brand: BrandProfile): Slide[] {
+  const tl = /gta/i.test(req.trend?.name ?? "") ? "GTA V" : "2014";
+  const nl = /gta/i.test(req.trend?.name ?? "") ? "GTA VI" : "2026";
+  const pairs: Array<[string, string, string, string, string]> = [
+    ["Hero sekce", "Posuvník s 5 fotkami z fotobanky", "Jeden jasný nadpis a tlačítko", "outdated 2014 website hero with an image slider and stock photos on an old monitor", "sleek modern minimal website hero with bold headline and orange button on a new smartphone"],
+    ["Kontakt", "Formulář s 12 poli a CAPTCHA", "Tlačítko Zavolat, vždy vidět", "an ugly long contact form with captcha on an old laptop screen", "a big call button on a modern phone screen held in hand, sunny street"],
+    ["Mobil", "Pinch-to-zoom a hledání", "Mobile-first, načte se za 1 s", "person squinting and zooming into tiny text on an old smartphone", "person smiling while browsing a fast clean website on a new phone"],
+    ["Fotky", "Usmívající se lidé z fotobanky", "Skutečný tým a skutečná práce", "generic smiling stock photo business people", "authentic photo of a craftsman at work in his workshop, natural light"],
+    ["Rezervace", "„Zavolejte nám mezi 9–11“", "Online rezervace za 10 s", "an old landline phone on a cluttered desk", "online booking calendar on a phone, one tap confirmation"],
+  ];
+  return [
+    {
+      index: 1,
+      headline: `Weby v éře ${tl} vs. v éře ${nl}`,
+      body: "Swipe ➜ ve které éře je ten váš?",
+      visual: "Titulek ve stylu obálky hry, dvě poloviny: vybledlá / syté barvy.",
+      imagePrompt: "split poster, left side faded retro 2014 colors, right side vibrant sunset neon colors, stylized open-world game cover composition, no text, no logos",
+      compare: { thenLabel: tl, nowLabel: nl, thenPrompt: "faded retro 2014 city at noon, low saturation", nowPrompt: "vibrant modern coastal city at sunset, neon, high saturation" },
+    },
+    ...pairs.map(([topic, then, now, tp, np], i) => ({
+      index: i + 2,
+      headline: topic,
+      body: `${tl}: ${then}\n${nl}: ${now}`,
+      visual: "Nahoře „tehdy“, dole „dnes“, štítky v rozích.",
+      imagePrompt: `${tp} vs ${np}`,
+      compare: { thenLabel: tl, nowLabel: nl, thenPrompt: `${tp}, retro VHS grain, faded`, nowPrompt: `${np}, crisp, vibrant, cinematic` },
+    })),
+    {
+      index: pairs.length + 2,
+      headline: "Ve které éře je váš web?",
+      body: `${brand.defaultCta}`,
+      visual: "Logo Project Two, CTA v oranžovém boxu.",
+      imagePrompt: "minimal dark background with orange glow, empty space for text",
+    },
+  ];
+}
+
 function carouselSlides(req: GenerateRequest, brand: BrandProfile, persona: Persona, hook: Hook): Slide[] {
+  if (req.trend && /tehdy|then|gta/i.test(req.trend.name)) return thenNowSlides(req, brand);
   const t = cleanTopic(req.topic);
   const pains = persona.pains.slice(0, 3);
   const cta = ctaForGoal(req.goal === "reach" ? "reach" : req.goal, brand);
@@ -360,6 +398,9 @@ export function generateLocal(req: GenerateRequest, brand: BrandProfile): Genera
   const seed = hashString(`${req.topic}|${req.format}|${req.reference?.id ?? ""}|${Date.now() >> 16}`);
   const persona = personaOf(brand, req.personaId);
   const hooks = buildHooks(req, brand, persona, seed);
+  if (req.trend?.ideas[0]) {
+    hooks[1] = { pattern: `Trend: ${req.trend.name}`, onScreen: req.trend.ideas[0].hook, spoken: `${req.trend.ideas[0].hook} ${req.trend.ideas[0].angle}.` };
+  }
   const isVideo = req.format === "reel";
   const isCarousel = req.format === "carousel";
   const t = cleanTopic(req.topic);
@@ -371,7 +412,12 @@ export function generateLocal(req: GenerateRequest, brand: BrandProfile): Genera
     script: isVideo ? reelScript(req, brand, persona, hooks[0], seed) : [],
     visualDirection: visualDirection(req),
     post: textPost(req, brand, persona, hooks[0], seed),
-    slides: isCarousel ? carouselSlides(req, brand, persona, hooks[0]) : [],
+    slides: isCarousel
+      ? carouselSlides(req, brand, persona, req.trend?.ideas[0] ? { ...hooks[0], onScreen: req.trend.ideas[0].hook } : hooks[0]).map((sl) => ({
+          ...sl,
+          imagePrompt: sl.imagePrompt ?? `${sl.visual} — clean social media slide background, 4:5, soft orange accent light, no text`,
+        }))
+      : [],
     caption: caption(req, brand, hooks[0], persona, seed),
     hashtags: hashtags(req, brand),
     meta: {

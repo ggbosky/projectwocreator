@@ -13,6 +13,8 @@ const RadarPage = lazy(() => import("./pages/Radar"));
 const StudioPage = lazy(() => import("./pages/Studio"));
 const PipelinePage = lazy(() => import("./pages/Pipeline"));
 const BrandPage = lazy(() => import("./pages/Brand"));
+const TrendsPage = lazy(() => import("./pages/Trends"));
+const VideoPage = lazy(() => import("./pages/Video"));
 const SettingsPage = lazy(() => import("./pages/Settings"));
 
 export function App() {
@@ -41,6 +43,8 @@ export function App() {
                 </Suspense>
               }
             />
+            <Route path="trends" element={<Suspense fallback={null}><TrendsPage /></Suspense>} />
+            <Route path="video" element={<Suspense fallback={null}><VideoPage /></Suspense>} />
             <Route path="radar" element={<Suspense fallback={null}><RadarPage /></Suspense>} />
             <Route path="studio" element={<Suspense fallback={null}><StudioPage /></Suspense>} />
             <Route path="pipeline" element={<Suspense fallback={null}><PipelinePage /></Suspense>} />

@@ -74,14 +74,35 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-export function downloadJson(filename: string, data: unknown) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+/**
+ * Saves a file for the user. Inside the claude.ai viewer this goes through the
+ * `downloads` capability (plain links are blocked there); elsewhere a normal link.
+ */
+export async function downloadFile(filename: string, data: Blob | string): Promise<boolean> {
+  const { useCapability } = await import("./runtime");
+  const dl = await useCapability("downloads");
+  if (dl) {
+    try {
+      await dl.save({ filename, data });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  const blob = typeof data === "string" ? new Blob([data], { type: "text/plain" }) : data;
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  return true;
+}
+
+export function downloadJson(filename: string, data: unknown) {
+  return downloadFile(filename, new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
 }
 
 export function detectPlatform(url: string): Platform | null {

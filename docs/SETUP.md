@@ -41,7 +41,7 @@ Výsledný hash vložte do `.env.local` jako `VITE_DEMO_PASSWORD_HASH=…` (soub
 
 1. V levém menu **SQL Editor** → **New query**.
 2. Zkopírujte celý obsah souboru [`supabase/migrations/20261122000000_init.sql`](../supabase/migrations/20261122000000_init.sql) a vložte ho.
-3. **Run**. Mělo by proběhnout bez chyb („Success. No rows returned“).
+3. **Run**. Pak stejně spusťte i [`supabase/migrations/20261122100000_trends_video.sql`](../supabase/migrations/20261122100000_trends_video.sql) (trendy, video projekty a úložiště médií). Mělo by proběhnout bez chyb („Success. No rows returned“).
 4. Kontrola: **Table Editor** → vidíte tabulky `profiles`, `brand_profiles`, `creators`, `viral_posts`,
    `content_items`, `integration_settings`, `activity_log` — všechny se štítkem **RLS enabled**.
 
@@ -114,7 +114,7 @@ npx supabase link --project-ref <project-ref>
 `<project-ref>` je část URL `https://<project-ref>.supabase.co`.
 
 ```bash
-npx supabase functions deploy ai-generate ai-analyze viral-radar crm-sync admin-users
+npx supabase functions deploy ai-generate ai-analyze viral-radar crm-sync admin-users trend-scout ai-media
 ```
 
 Všechny funkce vyžadují platný JWT přihlášeného člena týmu (`verify_jwt = true` + kontrola role v kódu).
@@ -127,6 +127,8 @@ Získejte klíče:
 |---|---|---|
 | Anthropic | generování obsahu + analýza | <https://console.anthropic.com/settings/keys> |
 | Apify | data z Instagramu a TikToku | <https://console.apify.com/settings/integrations> |
+| fal.ai | AI videa (Veo 3, Kling, Hailuo, Seedance, Wan) a obrázky (FLUX, Imagen) | <https://fal.ai/dashboard/keys> |
+| Replicate (volitelně) | alternativní AI videa a obrázky | <https://replicate.com/account/api-tokens> |
 | YouTube Data API v3 | vyhledávání Shorts | Google Cloud Console → APIs & Services → povolit „YouTube Data API v3“ → Credentials → API key |
 | CRM webhook secret | podpis požadavků do CRM | libovolný náhodný řetězec, např. `openssl rand -hex 32` |
 

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { SEED_BRAND } from "@/data/seed";
 import { getRepository } from "@/lib/repo";
-import type { BrandProfile, ContentItem, ContentStatus, Creator, GeneratedContent, ViralPost } from "@/lib/types";
+import type { BrandProfile, ContentItem, ContentStatus, Creator, GeneratedContent, Trend, VideoProject, ViralPost } from "@/lib/types";
 import { uid } from "@/lib/utils";
 
 interface DataState {
@@ -12,6 +12,13 @@ interface DataState {
   creators: Creator[];
   posts: ViralPost[];
   content: ContentItem[];
+  trends: Trend[];
+  videos: VideoProject[];
+
+  upsertTrends: (trends: Trend[]) => Promise<Trend[]>;
+  deleteTrend: (id: string) => Promise<void>;
+  saveVideo: (video: VideoProject) => Promise<VideoProject>;
+  deleteVideo: (id: string) => Promise<void>;
 
   load: () => Promise<void>;
   clear: () => void;
@@ -61,6 +68,46 @@ export const useData = create<DataState>((set, get) => ({
   creators: [],
   posts: [],
   content: [],
+  trends: [],
+  videos: [],
+
+  upsertTrends: async (trends) => {
+    const saved = await getRepository().upsertTrends(trends);
+    const result = saved.length ? saved : trends;
+    // Replace by id; also drop locally generated ids that the server re-keyed.
+    const ids = new Set(trends.map((t) => t.id));
+    set({ trends: replace(get().trends.filter((t) => !ids.has(t.id)), result) });
+    return result;
+  },
+
+  deleteTrend: async (id) => {
+    const prev = get().trends;
+    set({ trends: prev.filter((t) => t.id !== id) });
+    try {
+      await getRepository().deleteTrend(id);
+    } catch (e) {
+      set({ trends: prev });
+      throw e;
+    }
+  },
+
+  saveVideo: async (video) => {
+    set({ videos: replace(get().videos, [video]) });
+    const [saved] = await getRepository().upsertVideos([video]);
+    if (saved) set({ videos: replace(get().videos, [saved]) });
+    return saved ?? video;
+  },
+
+  deleteVideo: async (id) => {
+    const prev = get().videos;
+    set({ videos: prev.filter((v) => v.id !== id) });
+    try {
+      await getRepository().deleteVideo(id);
+    } catch (e) {
+      set({ videos: prev });
+      throw e;
+    }
+  },
 
   load: async () => {
     set({ loading: true, error: null });
@@ -72,7 +119,7 @@ export const useData = create<DataState>((set, get) => ({
     }
   },
 
-  clear: () => set({ ready: false, creators: [], posts: [], content: [], brand: SEED_BRAND }),
+  clear: () => set({ ready: false, creators: [], posts: [], content: [], trends: [], videos: [], brand: SEED_BRAND }),
 
   saveBrand: async (brand) => {
     const prev = get().brand;

@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
 import {
   Bot,
+  Clapperboard,
+  Film,
   CheckCircle2,
   CircleDashed,
   Database,
@@ -36,6 +38,8 @@ import { useUi } from "@/store/ui";
 
 const INTEGRATIONS: { key: string; name: string; desc: string; icon: ReactNode; placeholder: string; docs: string }[] = [
   { key: "anthropic_api_key", name: "Anthropic Claude", desc: "Generování scénářů, postů a analýzy virálů.", icon: <Bot />, placeholder: "sk-ant-…", docs: "https://console.anthropic.com/settings/keys" },
+  { key: "fal_key", name: "fal.ai", desc: "Generování AI videí (Veo, Kling, Hailuo, Seedance) a obrázků (FLUX, Imagen).", icon: <Clapperboard />, placeholder: "fal key id:secret", docs: "https://fal.ai/dashboard/keys" },
+  { key: "replicate_token", name: "Replicate", desc: "Alternativní poskytovatel AI videí a obrázků.", icon: <Film />, placeholder: "r8_…", docs: "https://replicate.com/account/api-tokens" },
   { key: "apify_token", name: "Apify", desc: "Stahování dat z Instagramu a TikToku (Viral Radar).", icon: <RadioTower />, placeholder: "apify_api_…", docs: "https://console.apify.com/settings/integrations" },
   { key: "youtube_api_key", name: "YouTube Data API", desc: "Vyhledávání virálních Shorts.", icon: <PlayCircle />, placeholder: "AIza…", docs: "https://console.cloud.google.com/apis/library/youtube.googleapis.com" },
   { key: "crm_webhook_secret", name: "CRM webhook secret", desc: "HMAC podpis požadavků do Project Two CRM.", icon: <Webhook />, placeholder: "náhodný řetězec 32+ znaků", docs: "" },

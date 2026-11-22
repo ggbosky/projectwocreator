@@ -9,8 +9,10 @@ Inter + Instrument Serif, skleněné panely, světlý režim jedním klikem.
 | Sekce | Co umí |
 |---|---|
 | **Dashboard** | KPI pipeline, nejvirálnější posty v oboru, stav Brand Brain, plán na 14 dní |
+| **Trend Radar** | Živé hledání trendů (Claude + web search), kalendář příležitostí (Black Friday, Wrapped, Vánoce…), knihovna virálních formátů včetně „Tehdy vs. dnes (GTA V → GTA VI)“, žhavost × shoda se značkou, nápady pro Project Two jedním klikem do Studia nebo videa |
+| **Video Studio** | AI storyboard po záběrech (prompty pro Veo, Kling, Sora, Runway, Hailuo, Higgsfield, Midjourney), přímé generování klipů přes fal.ai / Replicate, nahrání vlastních klipů, sestřih s virálními titulky (karaoke, herní, minimal), přechody, progress bar, hudba a voiceover, **export hotového MP4/WebM** |
 | **Viral Radar** | Hledání tvůrců a trendů podle klíčových slov, filtry platforem/jazyka/dosahu, Viral Score, engagement, štítky (Edukace, Kontroverze, Příběh…), Swipe File, **rozbor odkazu** (Hook · Retence · Storytelling · Vizuál · CTA) |
-| **AI Content Studio** | Remix virální reference → 3 hooky (text na obrazovce + mluvené slovo), scénář po vteřinách, B-roll/kamera/střih/titulky, popisek + hashtagy; karusel 7 slidů; LinkedIn post; X vlákno |
+| **AI Content Studio** | Trend-jacking, designer karuselů (PNG 1080×1350, šablona tehdy/dnes, AI obrázky), remix virální reference → 3 hooky (text na obrazovce + mluvené slovo), scénář po vteřinách, B-roll/kamera/střih/titulky, popisek + hashtagy; karusel 7 slidů; LinkedIn post; X vlákno |
 | **Pipeline & Kalendář** | Kanban (Nápady → Vygenerováno → K natočení → Hotovo → Publikováno) a měsíční kalendář, obojí drag & drop; **Odeslat do Project Two CRM** (podepsaný JSON webhook) |
 | **Brand Brain** | Popis byznysu, produkty, USP, persony (bolesti/touhy), tone of voice, zakázaná slova, referenční posty |
 | **Nastavení** | API klíče (šifrovaně v Supabase Vault), tým a role, CRM webhook, export/seed dat, motiv |

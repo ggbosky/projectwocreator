@@ -127,6 +127,10 @@ export interface Slide {
   headline: string;
   body: string;
   visual: string;
+  /** English prompt for an image model (Midjourney, Flux, DALL·E, Imagen…). */
+  imagePrompt?: string;
+  /** "Tehdy vs. dnes" pairs: labels and prompts for both halves. */
+  compare?: { thenLabel: string; nowLabel: string; thenPrompt: string; nowPrompt: string };
 }
 
 export interface GeneratedContent {
@@ -175,7 +179,89 @@ export interface GenerateRequest {
   goal: "reach" | "trust" | "leads" | "sales";
   personaId?: string;
   reference?: ViralPost;
+  trend?: Trend;
   extraInstructions?: string;
+}
+
+/* ------------------------------- Trends -------------------------------- */
+
+export type TrendKind = "meme" | "popculture" | "event" | "audio" | "format" | "challenge";
+export type TrendLifecycle = "rising" | "peak" | "fading" | "evergreen";
+
+export interface TrendIdea {
+  title: string;
+  hook: string;
+  format: ContentFormat;
+  angle: string;
+}
+
+export interface Trend {
+  id: string;
+  name: string;
+  kind: TrendKind;
+  description: string;
+  whyNow: string;
+  lifecycle: TrendLifecycle;
+  /** 0–100: how hot it is right now. */
+  heat: number;
+  /** 0–100: how well it fits the brand. */
+  brandFit: number;
+  /** ISO date of the event / peak (events and pop-culture moments). */
+  date?: string;
+  /** How many days the window stays open. */
+  windowDays?: number;
+  platforms: Platform[];
+  /** Step-by-step structure of the format. */
+  structure: string[];
+  examples: string[];
+  ideas: TrendIdea[];
+  hashtags: string[];
+  source: "seed" | "claude" | "web" | "manual";
+  saved: boolean;
+  createdAt: string;
+}
+
+/* -------------------------------- Video -------------------------------- */
+
+export type VideoStyle = "ugc" | "cinematic" | "meme_edit" | "game" | "retro_vhs" | "product_3d" | "kinetic_text";
+export type CaptionStyle = "bold" | "karaoke" | "minimal" | "game";
+export type Transition = "cut" | "flash" | "zoom" | "whip";
+export type ShotStatus = "draft" | "generating" | "ready" | "failed";
+
+export interface Shot {
+  id: string;
+  duration: number; // seconds
+  description: string; // Czech, what we see
+  prompt: string; // English prompt for text-to-video models
+  camera: string;
+  onScreenText: string;
+  voiceover: string;
+  transition: Transition;
+  status: ShotStatus;
+  videoUrl?: string;
+  imageUrl?: string;
+  provider?: string;
+  model?: string;
+  jobId?: string;
+  error?: string;
+}
+
+export interface VideoProject {
+  id: string;
+  title: string;
+  topic: string;
+  contentItemId?: string;
+  style: VideoStyle;
+  aspect: "9:16" | "1:1" | "16:9";
+  captionStyle: CaptionStyle;
+  hookText: string;
+  music: { mood: string; bpm: number; hint: string };
+  musicUrl?: string;
+  voiceoverUrl?: string;
+  shots: Shot[];
+  cta: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AnalyzeRequest {

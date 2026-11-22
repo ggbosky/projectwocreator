@@ -1,5 +1,8 @@
 import { motion } from "framer-motion";
-import { Camera, Clapperboard, Film, Hash, Layers, MessageSquareText, Mic, Type } from "lucide-react";
+import { Camera, Clapperboard, Film, Hash, Layers, MessageSquareText, Mic, Palette, Type } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useData } from "@/store/data";
+import { CarouselDesigner } from "./CarouselDesigner";
 import { useEffect, useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { CopyButton } from "@/components/ui/misc";
@@ -22,6 +25,8 @@ export function OutputView({ output }: { output: GeneratedContent }) {
     { value: "caption", label: <><Hash /> Popisek</> },
   ];
   const [view, setView] = useState<View>(isText ? "post" : "hooks");
+  const [designer, setDesigner] = useState(false);
+  const brandName = useData((s) => s.brand.name);
   useEffect(() => setView(isText ? "post" : "hooks"), [output, isText]);
 
   return (
@@ -101,6 +106,10 @@ export function OutputView({ output }: { output: GeneratedContent }) {
 
         {view === "slides" && (
           <Block title={`Karusel · ${output.slides.length} slidů`} copy={slidesText(output)}>
+            <Button size="sm" className="mb-3" onClick={() => setDesigner(true)}>
+              <Palette /> Navrhnout grafiku slidů
+            </Button>
+            <CarouselDesigner open={designer} onOpenChange={setDesigner} output={output} brandName={brandName} />
             <div className="no-scrollbar -mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2">
               {output.slides.map((s, i) => (
                 <motion.div
@@ -119,6 +128,11 @@ export function OutputView({ output }: { output: GeneratedContent }) {
                   </div>
                   <h4 className={cn("mt-2 font-bold leading-tight", i === 0 ? "text-xl" : "text-base")}>{s.headline}</h4>
                   <p className="mt-2 whitespace-pre-line text-xs text-muted">{s.body}</p>
+                  {s.compare && (
+                    <p className="mt-2 rounded-lg bg-brand/10 px-2 py-1 text-[10px] font-semibold text-brand">
+                      {s.compare.thenLabel} ⟷ {s.compare.nowLabel}
+                    </p>
+                  )}
                   <p className="mt-auto border-t border-border/70 pt-2 text-[10px] text-subtle">🎨 {s.visual}</p>
                 </motion.div>
               ))}

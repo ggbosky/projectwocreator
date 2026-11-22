@@ -36,3 +36,7 @@ verify_jwt = true
 verify_jwt = true
 [functions.admin-users]
 verify_jwt = true
+[functions.trend-scout]
+verify_jwt = true
+[functions.ai-media]
+verify_jwt = true

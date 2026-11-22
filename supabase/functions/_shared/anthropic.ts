@@ -67,3 +67,70 @@ export const obj = (properties: Record<string, unknown>) => ({
   additionalProperties: false,
 });
 export const arrOf = (items: unknown) => ({ type: "array", items });
+
+/** Free-form call with optional server tools (e.g. web search). Returns the final text. */
+export async function claudeText(opts: {
+  apiKey: string;
+  system: string;
+  user: string;
+  // deno-lint-ignore no-explicit-any
+  tools?: any[];
+  effort?: "low" | "medium" | "high";
+  maxTokens?: number;
+}): Promise<string> {
+  const client = new Anthropic({ apiKey: opts.apiKey, maxRetries: 2, timeout: 280_000 });
+  // deno-lint-ignore no-explicit-any
+  const messages: any[] = [{ role: "user", content: opts.user }];
+  for (let round = 0; round < 4; round++) {
+    let response;
+    try {
+      // deno-lint-ignore no-explicit-any
+      const params: any = {
+        model: CLAUDE_MODEL,
+        max_tokens: opts.maxTokens ?? 16000,
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+        thinking: { type: "adaptive" },
+        output_config: { effort: opts.effort ?? "medium" },
+        system: opts.system,
+        messages,
+        tools: opts.tools,
+      };
+      response = await client.beta.messages.stream(params).finalMessage();
+    } catch (e) {
+      if (e instanceof Anthropic.APIError) throw new HttpError(502, `Anthropic API: ${e.message}`);
+      throw e;
+    }
+    if (response.stop_reason === "refusal") throw new HttpError(422, "Model požadavek odmítl.");
+    if (response.stop_reason === "pause_turn") {
+      // Server tool loop paused — send the turn back to let it continue.
+      messages.push({ role: "assistant", content: response.content });
+      continue;
+    }
+    let text = "";
+    for (const block of response.content) if (block.type === "text") text += block.text;
+    return text;
+  }
+  throw new HttpError(504, "Hledání trvalo příliš dlouho.");
+}
+
+/** Extracts the first JSON value from model text (tolerates prose or code fences around it). */
+export function extractJson<T>(text: string): T {
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const candidates = [text.trim(), fence?.[1]?.trim() ?? ""];
+  const firstArr = text.indexOf("["), firstObj = text.indexOf("{");
+  const start = [firstArr, firstObj].filter((i) => i >= 0).sort((a, b) => a - b)[0];
+  if (start !== undefined) {
+    const end = Math.max(text.lastIndexOf("]"), text.lastIndexOf("}"));
+    if (end > start) candidates.push(text.slice(start, end + 1));
+  }
+  for (const c of candidates) {
+    if (!c) continue;
+    try {
+      return JSON.parse(c) as T;
+    } catch {
+      /* try next */
+    }
+  }
+  throw new HttpError(502, "Model nevrátil platný JSON.");
+}

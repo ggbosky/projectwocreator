@@ -1,7 +1,7 @@
 import { addDays, format, isWithinInterval, parseISO, startOfDay } from "date-fns";
 import { cs } from "date-fns/locale";
 import { motion } from "framer-motion";
-import { ArrowRight, Bookmark, Brain, CalendarDays, Clapperboard, Flame, Layers, Lightbulb, Link2, Send, Sparkles } from "lucide-react";
+import { TrendingUp, ArrowRight, Bookmark, Brain, CalendarDays, Clapperboard, Flame, Layers, Lightbulb, Link2, Send, Sparkles } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PlatformIcon } from "@/components/radar/PlatformIcon";
@@ -22,7 +22,8 @@ function greeting() {
 
 export default function DashboardPage() {
   const user = useAuth((s) => s.user);
-  const { posts, content, brand, ready, creators } = useData();
+  const { posts, content, brand, ready, creators, trends } = useData();
+  const hotTrends = useMemo(() => [...trends].sort((a, b) => b.heat * 0.6 + b.brandFit * 0.4 - (a.heat * 0.6 + a.brandFit * 0.4)).slice(0, 3), [trends]);
   const navigate = useNavigate();
 
   const stats = useMemo(() => {
@@ -136,6 +137,31 @@ export default function DashboardPage() {
         </section>
 
         <div className="space-y-6">
+          {/* Hot trends */}
+          <section className="card border-brand/30 bg-gradient-to-br from-brand/[0.08] to-transparent p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 font-semibold">
+                <TrendingUp className="size-4 text-brand" /> Trendy teď
+              </h2>
+              <Link to="/trends" className="flex items-center gap-1 text-xs text-subtle hover:text-brand">
+                Trend Radar <ArrowRight className="size-3" />
+              </Link>
+            </div>
+            <ul className="space-y-2">
+              {hotTrends.map((t) => (
+                <li key={t.id}>
+                  <button onClick={() => navigate(`/studio?trend=${t.id}`)} className="flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-elevated/60">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand/15 text-sm font-bold tabular-nums text-brand">{t.heat}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">{t.name}</span>
+                      <span className="block truncate text-xs text-muted">{t.ideas[0]?.hook ?? t.whyNow}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+
           {/* Brand Brain */}
           <section className="card p-5">
             <div className="flex items-center justify-between">

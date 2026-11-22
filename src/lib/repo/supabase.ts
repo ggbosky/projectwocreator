@@ -1,6 +1,7 @@
 import { SEED_BRAND, SEED_CONTENT, SEED_CREATORS, SEED_POSTS } from "@/data/seed";
+import { SEED_TRENDS } from "@/data/trends";
 import { requireSupabase } from "@/lib/supabase";
-import type { BrandProfile, ContentItem, Creator, ViralPost } from "@/lib/types";
+import type { BrandProfile, ContentItem, Creator, Trend, VideoProject, ViralPost } from "@/lib/types";
 import type { Repository, Snapshot } from "./types";
 
 /* ----------------------------- row mappers ------------------------------ */
@@ -199,17 +200,21 @@ export class SupabaseRepository implements Repository {
   }
 
   async loadAll(): Promise<Snapshot> {
-    const [brand, creators, posts, content] = await Promise.all([
+    const [brand, creators, posts, content, trends, videos] = await Promise.all([
       this.ensureBrand(),
       this.sb.from("creators").select("*").order("avg_views", { ascending: false }),
       this.sb.from("viral_posts").select("*").order("viral_score", { ascending: false }).limit(500),
       this.sb.from("content_items").select("*").order("position"),
+      this.sb.from("trends").select("id, data, saved").order("created_at", { ascending: false }).limit(300),
+      this.sb.from("video_projects").select("id, data").order("updated_at", { ascending: false }),
     ]);
     return {
       brand,
       creators: (check(creators) ?? []).map((r) => creatorFromRow(r as Row)),
       posts: (check(posts) ?? []).map((r) => postFromRow(r as Row)),
       content: (check(content) ?? []).map((r) => contentFromRow(r as Row)),
+      trends: (check(trends) ?? []).map((r) => ({ ...((r as Row).data as Trend), id: s((r as Row).id), saved: Boolean((r as Row).saved) })),
+      videos: (check(videos) ?? []).map((r) => ({ ...((r as Row).data as VideoProject), id: s((r as Row).id) })),
     };
   }
 
@@ -260,6 +265,40 @@ export class SupabaseRepository implements Repository {
     check(await this.sb.from("content_items").delete().eq("id", id));
   }
 
+  async upsertTrends(trends: Trend[]) {
+    if (!trends.length) return [];
+    const uidv = await this.userId();
+    const rows = trends.map((t) => {
+      const id = isUuid(t.id) ? t.id : crypto.randomUUID();
+      return { id, name: t.name, saved: t.saved, data: { ...t, id }, created_by: uidv };
+    });
+    const res = check(await this.sb.from("trends").upsert(rows).select("id, data, saved"));
+    return (res ?? []).map((r) => ({ ...((r as Row).data as Trend), id: s((r as Row).id), saved: Boolean((r as Row).saved) }));
+  }
+
+  async deleteTrend(id: string) {
+    check(await this.sb.from("trends").delete().eq("id", id));
+  }
+
+  async upsertVideos(videos: VideoProject[]) {
+    if (!videos.length) return [];
+    const uidv = await this.userId();
+    const now = new Date().toISOString();
+    const rows = videos.map((v) => ({
+      id: v.id,
+      title: v.title,
+      content_item_id: v.contentItemId && isUuid(v.contentItemId) ? v.contentItemId : null,
+      data: { ...v, updatedAt: now },
+      created_by: uidv,
+    }));
+    const res = check(await this.sb.from("video_projects").upsert(rows).select("id, data"));
+    return (res ?? []).map((r) => ({ ...((r as Row).data as VideoProject), id: s((r as Row).id) }));
+  }
+
+  async deleteVideo(id: string) {
+    check(await this.sb.from("video_projects").delete().eq("id", id));
+  }
+
   /** Inserts seed data, remapping the readable seed ids to UUIDs. */
   async seedSample(): Promise<Snapshot> {
     const idMap = new Map<string, string>();
@@ -279,6 +318,7 @@ export class SupabaseRepository implements Repository {
     await this.upsertContent(
       SEED_CONTENT.map((i) => ({ ...i, id: crypto.randomUUID(), referencePostId: map(i.referencePostId) })),
     );
+    await this.upsertTrends(SEED_TRENDS.map((t) => ({ ...t, id: crypto.randomUUID() })));
     return this.loadAll();
   }
 
@@ -287,6 +327,8 @@ export class SupabaseRepository implements Repository {
     check(await this.sb.from("content_items").delete().neq("id", none));
     check(await this.sb.from("viral_posts").delete().neq("id", none));
     check(await this.sb.from("creators").delete().neq("id", none));
+    check(await this.sb.from("trends").delete().neq("id", none));
+    check(await this.sb.from("video_projects").delete().neq("id", none));
     return this.loadAll();
   }
 }
