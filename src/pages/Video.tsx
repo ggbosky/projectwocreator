@@ -15,7 +15,7 @@ import { mediaStatus, planShots, submitMedia } from "@/lib/ai/service";
 import { toShots } from "@/lib/ai/localVideo";
 import { useEngine } from "@/lib/ai/useEngine";
 import { env } from "@/lib/env";
-import { storeMedia } from "@/lib/media";
+import { toMediaItem } from "@/lib/media";
 import type { CaptionStyle, GeneratedContent, Shot, VideoProject, VideoStyle } from "@/lib/types";
 import { cn, copyToClipboard, uid } from "@/lib/utils";
 import { API_MODELS, EXTERNAL_TOOLS } from "@/lib/video/providers";
@@ -31,7 +31,7 @@ interface NavState {
 }
 
 export default function VideoPage() {
-  const { videos, brand, content, trends, saveVideo, deleteVideo, ready } = useData();
+  const { videos, brand, content, trends, saveVideo, deleteVideo, ready, addMedia } = useData();
   const location = useLocation();
   const navigate = useNavigate();
   const { engine, label } = useEngine();
@@ -127,10 +127,10 @@ export default function VideoPage() {
   const uploadShot = async (shot: Shot, file: File) => {
     const tid = toast.loading("Nahrávám soubor…");
     try {
-      const { url, persistent } = await storeMedia(file, file.name);
-      const isVideo = file.type.startsWith("video");
-      updateShot(shot.id, { status: "ready", videoUrl: isVideo ? url : undefined, imageUrl: isVideo ? undefined : url, provider: "upload" });
-      toast.success(persistent ? "Klip uložen" : "Klip přidán (jen do zavření záložky)", { id: tid });
+      const [item] = await addMedia([await toMediaItem(file, file.name, "upload")]);
+      const isVideo = item.kind === "video";
+      updateShot(shot.id, { status: "ready", videoUrl: isVideo ? item.url : undefined, imageUrl: isVideo ? undefined : item.url, provider: "upload" });
+      toast.success(item.persistent ? "Klip uložen i do knihovny" : "Klip přidán (jen do zavření záložky)", { id: tid });
     } catch (e) {
       toast.error((e as Error).message, { id: tid });
     }
@@ -139,8 +139,8 @@ export default function VideoPage() {
   const uploadAudio = async (kind: "musicUrl" | "voiceoverUrl", file: File) => {
     const tid = toast.loading("Nahrávám zvuk…");
     try {
-      const { url } = await storeMedia(file, file.name);
-      await update({ [kind]: url });
+      const [item] = await addMedia([await toMediaItem(file, file.name, "upload", [kind === "musicUrl" ? "hudba" : "voiceover"])]);
+      await update({ [kind]: item.url });
       toast.success(kind === "musicUrl" ? "Hudba přidána" : "Voiceover přidán", { id: tid });
     } catch (e) {
       toast.error((e as Error).message, { id: tid });

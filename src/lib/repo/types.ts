@@ -1,4 +1,4 @@
-import type { BrandProfile, ContentItem, Creator, Trend, VideoProject, ViralPost } from "@/lib/types";
+import type { BrandProfile, ContentItem, Creator, MediaItem, Trend, VideoProject, ViralPost } from "@/lib/types";
 
 export interface Snapshot {
   brand: BrandProfile;
@@ -7,6 +7,7 @@ export interface Snapshot {
   content: ContentItem[];
   trends: Trend[];
   videos: VideoProject[];
+  media: MediaItem[];
 }
 
 /** Persistence abstraction: LocalRepository (demo) and SupabaseRepository (live). */
@@ -24,6 +25,8 @@ export interface Repository {
   deleteTrend(id: string): Promise<void>;
   upsertVideos(videos: VideoProject[]): Promise<VideoProject[]>;
   deleteVideo(id: string): Promise<void>;
+  upsertMedia(items: MediaItem[]): Promise<MediaItem[]>;
+  deleteMedia(id: string): Promise<void>;
   /** Inserts the sample library (creators, posts, pipeline). */
   seedSample(): Promise<Snapshot>;
   /** Wipes all data and restores defaults. */

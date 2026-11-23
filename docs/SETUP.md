@@ -41,7 +41,7 @@ Výsledný hash vložte do `.env.local` jako `VITE_DEMO_PASSWORD_HASH=…` (soub
 
 1. V levém menu **SQL Editor** → **New query**.
 2. Zkopírujte celý obsah souboru [`supabase/migrations/20261122000000_init.sql`](../supabase/migrations/20261122000000_init.sql) a vložte ho.
-3. **Run**. Pak stejně spusťte i [`supabase/migrations/20261122100000_trends_video.sql`](../supabase/migrations/20261122100000_trends_video.sql) (trendy, video projekty a úložiště médií). Mělo by proběhnout bez chyb („Success. No rows returned“).
+3. **Run**. Pak stejně spusťte i [`supabase/migrations/20261122100000_trends_video.sql`](../supabase/migrations/20261122100000_trends_video.sql) (trendy, video projekty a úložiště médií) a nakonec [`supabase/migrations/20261123000000_media_library.sql`](../supabase/migrations/20261123000000_media_library.sql) (knihovna médií). Mělo by proběhnout bez chyb („Success. No rows returned“).
 4. Kontrola: **Table Editor** → vidíte tabulky `profiles`, `brand_profiles`, `creators`, `viral_posts`,
    `content_items`, `integration_settings`, `activity_log` — všechny se štítkem **RLS enabled**.
 

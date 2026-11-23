@@ -169,7 +169,9 @@ ${input.trend ? trendBlock(input.trend) : ""}
 Vizuální styl: ${style.label} — ${style.prompt}
 Pro každý záběr napiš "prompt" ANGLICKY pro text-to-video model: subjekt, akce, prostředí, kamera, světlo, styl (zahrň "${style.prompt}"). Žádné texty v obraze, žádná loga cizích značek, žádné skutečné osobnosti.
 "onScreenText" česky, max 7 slov. "voiceover" česky, přirozeně mluvené.
+"scene" = animovaná grafika místo AI klipu, kde dává smysl (jinak null): "phone" (web v mobilu), "browser" (web v prohlížeči), "compare" (před/po, tehdy/dnes), "notifications" (příval poptávek), "counter" (velké číslo), "checklist" (body), "quote" (recenze), "headline" (úderný titulek, typicky hook nebo CTA). Použij ji u 2–4 záběrů. "sceneItems" = položky pro notifications/checklist, "sceneValue" = číslo pro counter.
 Odpověz POUZE JSON:
 {"title": string, "hookText": string, "cta": string, "music": {"mood": string, "bpm": number, "hint": string},
- "shots": [{"duration": number, "description": string, "prompt": string, "camera": string, "onScreenText": string, "voiceover": string, "transition": "cut"|"flash"|"zoom"|"whip"}]}`;
+ "shots": [{"duration": number, "description": string, "prompt": string, "camera": string, "onScreenText": string, "voiceover": string, "transition": "cut"|"flash"|"zoom"|"whip",
+   "scene": "phone"|"browser"|"compare"|"notifications"|"counter"|"checklist"|"quote"|"headline"|null, "sceneItems": string[], "sceneValue": number}]}`;
 }

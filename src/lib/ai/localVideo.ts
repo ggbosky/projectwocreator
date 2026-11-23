@@ -1,5 +1,7 @@
 import type { BrandProfile, Shot, Transition, Trend, VideoProject, VideoStyle } from "@/lib/types";
 import { uid } from "@/lib/utils";
+import { defaultScene } from "@/lib/graphics/scenes";
+import type { SceneType } from "@/lib/types";
 import { STYLE_GUIDE } from "./prompts";
 
 export interface ShotPlan {
@@ -74,6 +76,18 @@ export function planShotsLocal(
   };
 }
 
+/** Picks an animated template for shots whose description suggests one. */
+function guessScene(s: ShotPlan["shots"][number], i: number, n: number): Shot["scene"] {
+  if (s.scene) return s.scene;
+  const d = `${s.description} ${s.onScreenText}`.toLowerCase();
+  const mk = (t: SceneType, extra: Partial<NonNullable<Shot["scene"]>> = {}) => ({ ...defaultScene(t), headline: s.onScreenText || defaultScene(t).headline, ...extra });
+  if (/notifik|poptáv/.test(d)) return mk("notifications");
+  if (/tehdy|dnes|před|po\b|vs\./.test(d) && /web|2014|2026/.test(d)) return mk("compare", { headline: s.onScreenText, labelA: /gta/i.test(d) ? "GTA V" : "Tehdy", labelB: /gta/i.test(d) ? "GTA VI" : "Dnes" });
+  if (/moderní|nový web|mobile/.test(d)) return mk("phone");
+  if (i === n - 1 || /cta/.test(d)) return mk("headline", { subline: "projectwo.com" });
+  return undefined;
+}
+
 export function toShots(plan: ShotPlan["shots"]): Shot[] {
-  return plan.map((s) => ({ ...s, id: uid(), status: "draft" as const }));
+  return plan.map((s, i) => ({ ...s, scene: guessScene(s, i, plan.length), id: uid(), status: "draft" as const }));
 }

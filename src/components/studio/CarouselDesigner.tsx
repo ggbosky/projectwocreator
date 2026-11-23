@@ -1,11 +1,13 @@
-import { ChevronLeft, ChevronRight, Copy, Download, ImagePlus, Loader2, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Download, ImagePlus, LibraryBig, Loader2, Sparkles } from "lucide-react";
+import { MediaPicker } from "@/components/media/MediaPicker";
+import { useData } from "@/store/data";
+import { toMediaItem } from "@/lib/media";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { mediaStatus, submitMedia } from "@/lib/ai/service";
 import { env } from "@/lib/env";
-import { storeMedia } from "@/lib/media";
 import type { GeneratedContent, Slide } from "@/lib/types";
 import { cn, copyToClipboard, downloadFile } from "@/lib/utils";
 import { roundRect, wrap } from "@/lib/video/composer";
@@ -152,6 +154,8 @@ export function CarouselDesigner({ open, onOpenChange, output, brandName }: { op
   const fileRef = useRef<HTMLInputElement>(null);
   const pendingSlot = useRef<SlotKey>("bg");
   const [tick, setTick] = useState(0);
+  const [libSlot, setLibSlot] = useState<SlotKey | null>(null);
+  const addMedia = useData((s) => s.addMedia);
   const redraw = useCallback(() => setTick((t) => t + 1), []);
 
   useEffect(() => {
@@ -218,9 +222,11 @@ export function CarouselDesigner({ open, onOpenChange, output, brandName }: { op
         render(ctx, s, slides.length, tpl, images[s.index] ?? {}, brandName, () => undefined);
         const blob = await new Promise<Blob | null>((r) => c.toBlob(r, "image/png"));
         if (!blob) throw new Error("Obrázek se nepodařilo vytvořit (zablokovaný obrázek bez CORS?)");
-        if (await downloadFile(`slide-${String(s.index).padStart(2, "0")}.png`, blob)) saved++;
+        const name = `slide-${String(s.index).padStart(2, "0")}.png`;
+        await addMedia([await toMediaItem(blob, name, "graphic", ["karusel"])]);
+        if (await downloadFile(name, blob)) saved++;
       }
-      toast.success(`Uloženo ${saved} slidů (PNG 1080×1350)`);
+      toast.success(`Uloženo ${saved} slidů (PNG 1080×1350)`, { description: "Kopie jsou i v Knihovně médií." });
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -286,6 +292,9 @@ export function CarouselDesigner({ open, onOpenChange, output, brandName }: { op
                 >
                   <ImagePlus /> Nahrát
                 </Button>
+                <Button size="sm" variant="outline" onClick={() => setLibSlot(s.key)}>
+                  <LibraryBig /> Knihovna
+                </Button>
                 {s.prompt && (
                   <Button size="sm" variant="outline" onClick={async () => (await copyToClipboard(`${s.prompt} --ar ${compareMode ? "16:9" : "4:5"}`)) && toast.success("Prompt zkopírován", { description: "Midjourney, ChatGPT, Gemini, Flux…" })}>
                     <Copy /> Prompt
@@ -309,13 +318,14 @@ export function CarouselDesigner({ open, onOpenChange, output, brandName }: { op
               e.target.value = "";
               if (!f) return;
               try {
-                const { url } = await storeMedia(f, f.name);
-                setSlot(pendingSlot.current, url);
+                const [item] = await addMedia([await toMediaItem(f, f.name, "upload", ["karusel"])]);
+                setSlot(pendingSlot.current, item.url);
               } catch (err) {
                 toast.error((err as Error).message);
               }
             }}
           />
+          <MediaPicker open={libSlot !== null} onOpenChange={(o) => !o && setLibSlot(null)} filter="image" onPick={(m) => libSlot && setSlot(libSlot, m.url)} />
           <p className="text-xs text-subtle">Tip: obrázek vygenerujte v jakékoli AI (prompt výše) a nahrajte ho sem — text, štítky a branding doplní designer.</p>
         </div>
       </div>

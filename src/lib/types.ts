@@ -228,8 +228,50 @@ export type CaptionStyle = "bold" | "karaoke" | "minimal" | "game";
 export type Transition = "cut" | "flash" | "zoom" | "whip";
 export type ShotStatus = "draft" | "generating" | "ready" | "failed";
 
+/* ------------------------------ Media & scenes ----------------------------- */
+
+export type MediaKind = "image" | "video" | "audio";
+
+export interface MediaItem {
+  id: string;
+  name: string;
+  kind: MediaKind;
+  url: string;
+  mime: string;
+  size: number;
+  width?: number;
+  height?: number;
+  source: "upload" | "graphic" | "ai_svg" | "ai_api" | "recording";
+  /** False for session-only object URLs (plain demo without storage). */
+  persistent: boolean;
+  tags: string[];
+  createdAt: string;
+}
+
+/** Animated graphic templates — rendered as images, carousel slides or video scenes. */
+export type SceneType = "phone" | "browser" | "notifications" | "counter" | "compare" | "checklist" | "quote" | "meme" | "headline";
+
+export interface SceneParams {
+  type: SceneType;
+  headline: string;
+  subline: string;
+  /** Primary image / screenshot (URL). */
+  media?: string;
+  /** Second image for compare. */
+  media2?: string;
+  items: string[];
+  value: number;
+  labelA: string;
+  labelB: string;
+  url: string;
+  author: string;
+  theme: "dark" | "light" | "brand";
+}
+
 export interface Shot {
   id: string;
+  /** Animated template drawn when the shot has no clip of its own. */
+  scene?: SceneParams;
   duration: number; // seconds
   description: string; // Czech, what we see
   prompt: string; // English prompt for text-to-video models

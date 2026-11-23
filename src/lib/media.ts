@@ -36,3 +36,40 @@ export async function storeMedia(file: Blob, name: string): Promise<StoredMedia>
   }
   return { url: URL.createObjectURL(file), persistent: false };
 }
+
+import type { MediaItem, MediaKind } from "./types";
+import { uid } from "./utils";
+
+function probe(url: string, kind: MediaKind): Promise<{ width?: number; height?: number }> {
+  return new Promise((resolve) => {
+    if (kind === "image") {
+      const i = new Image();
+      i.onload = () => resolve({ width: i.naturalWidth, height: i.naturalHeight });
+      i.onerror = () => resolve({});
+      i.src = url;
+    } else if (kind === "video") {
+      const v = document.createElement("video");
+      v.preload = "metadata";
+      v.onloadedmetadata = () => resolve({ width: v.videoWidth, height: v.videoHeight });
+      v.onerror = () => resolve({});
+      v.src = url;
+    } else resolve({});
+    setTimeout(() => resolve({}), 6000);
+  });
+}
+
+export function kindOf(mime: string): MediaKind | null {
+  if (mime.startsWith("image/")) return "image";
+  if (mime.startsWith("video/")) return "video";
+  if (mime.startsWith("audio/")) return "audio";
+  return null;
+}
+
+/** Stores a file/blob and returns a library item (not yet added to the store). */
+export async function toMediaItem(file: Blob, name: string, source: MediaItem["source"], tags: string[] = []): Promise<MediaItem> {
+  const kind = kindOf(file.type);
+  if (!kind) throw new Error(`Nepodporovaný typ souboru: ${file.type || name}`);
+  const { url, persistent } = await storeMedia(file, name);
+  const dims = await probe(url, kind);
+  return { id: uid(), name, kind, url, mime: file.type, size: file.size, ...dims, source, persistent, tags, createdAt: new Date().toISOString() };
+}

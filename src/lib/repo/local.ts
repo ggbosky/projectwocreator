@@ -1,6 +1,6 @@
 import { SEED_BRAND, SEED_CONTENT, SEED_CREATORS, SEED_POSTS } from "@/data/seed";
 import { SEED_TRENDS } from "@/data/trends";
-import type { BrandProfile, ContentItem, Creator, Trend, VideoProject, ViralPost } from "@/lib/types";
+import type { BrandProfile, ContentItem, Creator, MediaItem, Trend, VideoProject, ViralPost } from "@/lib/types";
 import type { Repository, Snapshot } from "./types";
 
 const KEY = "pw-creator-data-v1";
@@ -18,6 +18,8 @@ function read(): Snapshot | null {
       content: (s.content ?? []).filter((c) => !c.id.startsWith("ci_seed_")),
       trends: s.trends ?? structuredClone(SEED_TRENDS),
       videos: s.videos ?? [],
+      // Session-only blob: URLs die with the tab — drop them on reload.
+      media: (s.media ?? []).filter((m) => m.persistent),
     } as Snapshot;
   } catch {
     return null;
@@ -33,7 +35,7 @@ function write(s: Snapshot) {
 }
 
 function defaults(): Snapshot {
-  return structuredClone({ brand: SEED_BRAND, creators: SEED_CREATORS, posts: SEED_POSTS, content: [] as ContentItem[], trends: SEED_TRENDS, videos: [] as VideoProject[] });
+  return structuredClone({ brand: SEED_BRAND, creators: SEED_CREATORS, posts: SEED_POSTS, content: [] as ContentItem[], trends: SEED_TRENDS, videos: [] as VideoProject[], media: [] as MediaItem[] });
 }
 
 function upsert<T extends { id: string }>(list: T[], items: T[]): T[] {
@@ -114,6 +116,15 @@ export class LocalRepository implements Repository {
 
   async deleteVideo(id: string) {
     this.commit({ videos: this.state.videos.filter((v) => v.id !== id) });
+  }
+
+  async upsertMedia(items: MediaItem[]) {
+    this.commit({ media: upsert(this.state.media, items) });
+    return items;
+  }
+
+  async deleteMedia(id: string) {
+    this.commit({ media: this.state.media.filter((m) => m.id !== id) });
   }
 
   async seedSample() {

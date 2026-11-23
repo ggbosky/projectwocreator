@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { SEED_BRAND } from "@/data/seed";
 import { getRepository } from "@/lib/repo";
-import type { BrandProfile, ContentItem, ContentStatus, Creator, GeneratedContent, Trend, VideoProject, ViralPost } from "@/lib/types";
+import type { BrandProfile, ContentItem, ContentStatus, Creator, GeneratedContent, MediaItem, Trend, VideoProject, ViralPost } from "@/lib/types";
 import { uid } from "@/lib/utils";
 
 interface DataState {
@@ -14,6 +14,9 @@ interface DataState {
   content: ContentItem[];
   trends: Trend[];
   videos: VideoProject[];
+  media: MediaItem[];
+  addMedia: (items: MediaItem[]) => Promise<MediaItem[]>;
+  deleteMedia: (id: string) => Promise<void>;
 
   upsertTrends: (trends: Trend[]) => Promise<Trend[]>;
   deleteTrend: (id: string) => Promise<void>;
@@ -70,6 +73,28 @@ export const useData = create<DataState>((set, get) => ({
   content: [],
   trends: [],
   videos: [],
+  media: [],
+
+  addMedia: async (items) => {
+    set({ media: [...items, ...get().media.filter((m) => !items.some((i) => i.id === m.id))] });
+    const saved = await getRepository().upsertMedia(items);
+    if (saved.length) {
+      const ids = new Set(items.map((i) => i.id));
+      set({ media: [...saved, ...get().media.filter((m) => !ids.has(m.id) && !saved.some((x) => x.id === m.id))] });
+    }
+    return saved.length ? saved : items;
+  },
+
+  deleteMedia: async (id) => {
+    const prev = get().media;
+    set({ media: prev.filter((m) => m.id !== id) });
+    try {
+      await getRepository().deleteMedia(id);
+    } catch (e) {
+      set({ media: prev });
+      throw e;
+    }
+  },
 
   upsertTrends: async (trends) => {
     const saved = await getRepository().upsertTrends(trends);
@@ -119,7 +144,7 @@ export const useData = create<DataState>((set, get) => ({
     }
   },
 
-  clear: () => set({ ready: false, creators: [], posts: [], content: [], trends: [], videos: [], brand: SEED_BRAND }),
+  clear: () => set({ ready: false, creators: [], posts: [], content: [], trends: [], videos: [], media: [], brand: SEED_BRAND }),
 
   saveBrand: async (brand) => {
     const prev = get().brand;

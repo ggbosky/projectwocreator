@@ -5,6 +5,7 @@
  * voiceover. Export records the canvas with MediaRecorder (MP4 where the
  * browser supports it, otherwise WebM).
  */
+import { drawScene } from "@/lib/graphics/scenes";
 import type { CaptionStyle, Shot, VideoProject, VideoStyle } from "@/lib/types";
 
 export const ASPECT_SIZE: Record<VideoProject["aspect"], [number, number]> = {
@@ -46,6 +47,7 @@ export class ReelComposer {
   private t0 = 0;
   private offset = 0;
   private activeVideo: HTMLVideoElement | null = null;
+  private images = new Map<string, HTMLImageElement>();
   private music?: HTMLAudioElement;
   private voice?: HTMLAudioElement;
   onTime?: (t: number) => void;
@@ -300,8 +302,24 @@ export class ReelComposer {
     ctx.restore();
   }
 
+  private getImage = (url: string): HTMLImageElement | null => {
+    let im = this.images.get(url);
+    if (!im) {
+      im = new Image();
+      im.crossOrigin = "anonymous";
+      im.onload = () => !this.playing && this.draw(this.offset);
+      im.src = url;
+      this.images.set(url, im);
+    }
+    return im.complete && im.naturalWidth ? im : null;
+  };
+
   private drawShot(shot: Shot, index: number, local: number, t: number) {
     const m = this.media.get(shot.id);
+    if (shot.scene && !shot.videoUrl && !shot.imageUrl) {
+      drawScene(this.ctx, this.width, this.height, shot.scene, local, shot.duration, this.getImage, this.opts.brandName);
+      return;
+    }
     const v = m?.video;
     if (v && v.readyState >= 2) {
       this.cover(v, v.videoWidth, v.videoHeight, local, shot.duration);
@@ -404,6 +422,8 @@ export class ReelComposer {
   }
 
   private overlayText(shot: Shot, index: number, local: number) {
+    // Scenes carry their own typography.
+    if (shot.scene && !shot.videoUrl && !shot.imageUrl) return;
     const text = (index === 0 && this.project.hookText ? this.project.hookText : shot.onScreenText).trim();
     if (!text) return;
     const { ctx, width: W, height: H } = this;

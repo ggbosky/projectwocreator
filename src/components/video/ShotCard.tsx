@@ -1,7 +1,12 @@
 import * as DM from "@radix-ui/react-dropdown-menu";
 import { motion } from "framer-motion";
-import { ArrowDown, ArrowUp, Check, Clapperboard, Copy, ExternalLink, Film, ImagePlus, Loader2, RefreshCw, Sparkles, Trash2, Upload, X } from "lucide-react";
-import { useRef } from "react";
+import { ArrowDown, ArrowUp, Camera, Check, Clapperboard, Copy, ExternalLink, Film, ImagePlus, LibraryBig, Loader2, Palette, RefreshCw, Sparkles, Trash2, Upload, X } from "lucide-react";
+import { MediaPicker } from "@/components/media/MediaPicker";
+import { RecorderDialog } from "@/components/media/RecorderDialog";
+import { SceneEditor } from "@/components/media/SceneEditor";
+import { defaultScene, SCENE_META } from "@/lib/graphics/scenes";
+import type { SceneType } from "@/lib/types";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +34,8 @@ interface Props {
 
 export function ShotCard({ shot, index, count, project, active, canGenerate, onChange, onMove, onRemove, onGenerate, onUpload }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [picking, setPicking] = useState(false);
+  const [recording, setRecording] = useState(false);
   const hasMedia = Boolean(shot.videoUrl || shot.imageUrl);
 
   return (
@@ -48,7 +55,16 @@ export function ShotCard({ shot, index, count, project, active, canGenerate, onC
               <img src={shot.imageUrl} alt="" className="h-full w-full object-cover" crossOrigin="anonymous" />
             ) : (
               <div className="grid h-full place-items-center p-2 text-center text-[10px] text-zinc-400">
-                {shot.status === "generating" ? <Loader2 className="size-5 animate-spin text-brand" /> : <Film className="size-5" />}
+                {shot.status === "generating" ? (
+                  <Loader2 className="size-5 animate-spin text-brand" />
+                ) : shot.scene ? (
+                  <span className="flex flex-col items-center gap-1 text-brand">
+                    <Palette className="size-5" />
+                    {SCENE_META[shot.scene.type].label}
+                  </span>
+                ) : (
+                  <Film className="size-5" />
+                )}
               </div>
             )}
           </div>
@@ -115,6 +131,34 @@ export function ShotCard({ shot, index, count, project, active, canGenerate, onC
             </div>
           </details>
 
+          <div className="rounded-xl border border-border p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="label">Vzhled záběru</span>
+              <Select
+                value={shot.scene?.type ?? "clip"}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  onChange({ scene: v === "clip" ? undefined : { ...defaultScene(v as SceneType), headline: shot.onScreenText || defaultScene(v as SceneType).headline } });
+                }}
+                className="h-8 w-56 text-xs"
+                aria-label="Vzhled záběru"
+              >
+                <option value="clip">Klip / obrázek (AI nebo nahraný)</option>
+                {(Object.keys(SCENE_META) as SceneType[]).map((t) => (
+                  <option key={t} value={t}>
+                    Animace: {SCENE_META[t].label}
+                  </option>
+                ))}
+              </Select>
+              {shot.scene && hasMedia && <span className="text-[11px] text-warning">Má nahraný klip — ten má přednost.</span>}
+            </div>
+            {shot.scene && (
+              <div className="mt-3">
+                <SceneEditor compact value={shot.scene} onChange={(scene) => onChange({ scene })} />
+              </div>
+            )}
+          </div>
+
           <div className="flex flex-wrap gap-1.5">
             <Tip content={canGenerate ? "Vygeneruje klip vybraným modelem" : "Vyžaduje ostrý režim (Supabase) a klíč fal.ai / Replicate"}>
               <span>
@@ -149,9 +193,28 @@ export function ShotCard({ shot, index, count, project, active, canGenerate, onC
                 </DM.Content>
               </DM.Portal>
             </DM.Root>
-            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-              {hasMedia ? <ImagePlus /> : <Upload />} Nahrát klip / obrázek
+            <Button size="sm" variant="outline" onClick={() => setPicking(true)}>
+              <LibraryBig /> Z knihovny
             </Button>
+            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+              {hasMedia ? <ImagePlus /> : <Upload />} Nahrát
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setRecording(true)}>
+              <Camera /> Natočit
+            </Button>
+            <MediaPicker
+              open={picking}
+              onOpenChange={setPicking}
+              filter="visual"
+              title="Klip nebo obrázek pro záběr"
+              onPick={(m) => onChange({ status: "ready", videoUrl: m.kind === "video" ? m.url : undefined, imageUrl: m.kind === "image" ? m.url : undefined, provider: "library" })}
+            />
+            <RecorderDialog
+              open={recording}
+              onOpenChange={setRecording}
+              script={shot.voiceover}
+              onDone={(m) => onChange({ status: "ready", videoUrl: m.url, imageUrl: undefined, provider: "recording" })}
+            />
             <input
               ref={fileRef}
               type="file"

@@ -24,6 +24,8 @@ import type {
   ViralPost,
 } from "@/lib/types";
 import { sleep, uid } from "@/lib/utils";
+import { defaultScene } from "@/lib/graphics/scenes";
+import type { SceneType } from "@/lib/types";
 import { analyzeLocal, generateLocal } from "./localEngine";
 import { searchLocal } from "./localRadar";
 import { planShotsLocal, type ShotPlan } from "./localVideo";
@@ -60,6 +62,14 @@ async function claudeJson<T>(prompt: string, tier: "quick" | "default" | "comple
     }
     throw new Error(sampleErrorMessage(e));
   }
+}
+
+/** Generic "answer with JSON" call on whichever AI engine is active. */
+export async function aiJson<T>(prompt: string): Promise<T> {
+  const engine = await resolveEngine();
+  if (engine === "edge") return (await invokeFunction<{ value: T }>("trend-scout", { action: "json", prompt })).value;
+  if (engine === "claude") return claudeJson<T>(prompt, "default");
+  throw new Error("Tahle funkce potřebuje Claude — povolte ho, až se aplikace zeptá.");
 }
 
 /* ------------------------------ normalizers ------------------------------ */
@@ -248,6 +258,7 @@ export async function planShots(
       onScreenText: str(s.onScreenText),
       voiceover: str(s.voiceover),
       transition: (transitions.includes(str(s.transition)) ? s.transition : "cut") as Shot["transition"],
+      scene: sceneFrom(s),
     }));
     if (!shots.length) throw new Error("AI nevrátila žádné záběry, zkuste to znovu.");
     return {
@@ -261,6 +272,21 @@ export async function planShots(
   }
   await sleep(700);
   return { ...planShotsLocal(input, brand), engine };
+}
+
+const SCENE_TYPES = ["phone", "browser", "compare", "notifications", "counter", "checklist", "quote", "headline"];
+
+function sceneFrom(s: Record<string, unknown>): Shot["scene"] {
+  const t = str(s.scene);
+  if (!SCENE_TYPES.includes(t)) return undefined;
+  const base = defaultScene(t as SceneType);
+  const items = arr<string>(s.sceneItems).filter(Boolean);
+  return {
+    ...base,
+    headline: str(s.onScreenText) || base.headline,
+    items: items.length ? items : base.items,
+    value: num(s.sceneValue, base.value),
+  };
 }
 
 export interface MediaJob {

@@ -1,7 +1,7 @@
 import { SEED_BRAND, SEED_CONTENT, SEED_CREATORS, SEED_POSTS } from "@/data/seed";
 import { SEED_TRENDS } from "@/data/trends";
 import { requireSupabase } from "@/lib/supabase";
-import type { BrandProfile, ContentItem, Creator, Trend, VideoProject, ViralPost } from "@/lib/types";
+import type { BrandProfile, ContentItem, Creator, MediaItem, Trend, VideoProject, ViralPost } from "@/lib/types";
 import type { Repository, Snapshot } from "./types";
 
 /* ----------------------------- row mappers ------------------------------ */
@@ -200,13 +200,14 @@ export class SupabaseRepository implements Repository {
   }
 
   async loadAll(): Promise<Snapshot> {
-    const [brand, creators, posts, content, trends, videos] = await Promise.all([
+    const [brand, creators, posts, content, trends, videos, media] = await Promise.all([
       this.ensureBrand(),
       this.sb.from("creators").select("*").order("avg_views", { ascending: false }),
       this.sb.from("viral_posts").select("*").order("viral_score", { ascending: false }).limit(500),
       this.sb.from("content_items").select("*").order("position"),
       this.sb.from("trends").select("id, data, saved").order("created_at", { ascending: false }).limit(300),
       this.sb.from("video_projects").select("id, data").order("updated_at", { ascending: false }),
+      this.sb.from("media_assets").select("id, data").order("created_at", { ascending: false }).limit(500),
     ]);
     return {
       brand,
@@ -215,6 +216,7 @@ export class SupabaseRepository implements Repository {
       content: (check(content) ?? []).map((r) => contentFromRow(r as Row)),
       trends: (check(trends) ?? []).map((r) => ({ ...((r as Row).data as Trend), id: s((r as Row).id), saved: Boolean((r as Row).saved) })),
       videos: (check(videos) ?? []).map((r) => ({ ...((r as Row).data as VideoProject), id: s((r as Row).id) })),
+      media: (check(media) ?? []).map((r) => ({ ...((r as Row).data as MediaItem), id: s((r as Row).id) })),
     };
   }
 
@@ -297,6 +299,18 @@ export class SupabaseRepository implements Repository {
 
   async deleteVideo(id: string) {
     check(await this.sb.from("video_projects").delete().eq("id", id));
+  }
+
+  async upsertMedia(items: MediaItem[]) {
+    if (!items.length) return [];
+    const uidv = await this.userId();
+    const rows = items.map((m) => ({ id: isUuid(m.id) ? m.id : crypto.randomUUID(), name: m.name, kind: m.kind, data: m, created_by: uidv }));
+    const res = check(await this.sb.from("media_assets").upsert(rows.map((r) => ({ ...r, data: { ...r.data, id: r.id } }))).select("id, data"));
+    return (res ?? []).map((r) => ({ ...((r as Row).data as MediaItem), id: s((r as Row).id) }));
+  }
+
+  async deleteMedia(id: string) {
+    check(await this.sb.from("media_assets").delete().eq("id", id));
   }
 
   /** Inserts seed data, remapping the readable seed ids to UUIDs. */

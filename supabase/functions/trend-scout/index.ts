@@ -27,6 +27,9 @@ const SHOTS_SCHEMA = obj({
       onScreenText: str,
       voiceover: str,
       transition: { type: "string", enum: ["cut", "flash", "zoom", "whip"] },
+      scene: { type: "string", enum: ["none", "phone", "browser", "compare", "notifications", "counter", "checklist", "quote", "headline"] },
+      sceneItems: { type: "array", items: { type: "string" } },
+      sceneValue: { type: "number" },
     }),
   ),
 });
@@ -45,6 +48,19 @@ Deno.serve(
       const plan = await claudeJson<any>({ apiKey, system: "Jsi režisér virálních krátkých videí. Odpovídej přesně podle schématu.", user: body.prompt, schema: SHOTS_SCHEMA, effort: "medium" });
       await logActivity(caller, "ai.shots", { shots: plan.shots?.length ?? 0 });
       return json({ plan });
+    }
+
+    if (action === "json") {
+      if (typeof body.prompt !== "string" || body.prompt.length > 20_000) throw new HttpError(400, "Neplatné zadání");
+      const text = await claudeText({ apiKey, system: "Reply with exactly one JSON value and nothing else.", user: body.prompt, effort: "low", maxTokens: 6000 });
+      return json({ value: extractJson(text) });
+    }
+
+    if (action === "svg") {
+      if (typeof body.prompt !== "string" || body.prompt.length > 20_000) throw new HttpError(400, "Neplatné zadání");
+      const svg = await claudeText({ apiKey, system: "You draw polished SVG illustrations. Reply with SVG markup only.", user: body.prompt, effort: "medium", maxTokens: 32000 });
+      await logActivity(caller, "ai.svg", {});
+      return json({ svg });
     }
 
     if (action === "ideas") {
