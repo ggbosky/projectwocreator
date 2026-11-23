@@ -27,7 +27,7 @@ npm install
 npm run dev
 ```
 
-Otevřete <http://localhost:5173>, přihlaste se `admin@projectwo.com` / `projectwo-demo` (heslo si změňte — viz `.env.example`).
+Otevřete <http://localhost:5173>, přihlaste se jménem `admin` a výchozím heslem (změna viz `.env.example`).
 
 ## Ostrý provoz
 

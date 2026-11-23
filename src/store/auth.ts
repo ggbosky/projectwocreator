@@ -153,10 +153,10 @@ export const useAuth = create<AuthState>((set, get) => ({
     assertNotLocked();
     if (env.authMode === "demo") {
       await sleep(450); // uniform delay, slows down brute force
-      const ok = email === env.demo.email && (await sha256Hex(password)) === env.demo.passwordHash;
+      const ok = email === env.demo.username && (await sha256Hex(password)) === env.demo.passwordHash;
       if (!ok) {
         registerFailure();
-        throw new Error("Nesprávný e-mail nebo heslo.");
+        throw new Error("Nesprávné jméno nebo heslo.");
       }
       safeStorage.remove(LOCK_KEY);
       const exp = Date.now() + SESSION_TTL_MS;

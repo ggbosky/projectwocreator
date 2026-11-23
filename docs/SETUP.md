@@ -17,7 +17,7 @@ npm install
 npm run dev
 ```
 
-Otevřete <http://localhost:5173> → přihlášení `admin@projectwo.com` / `projectwo-demo`.
+Otevřete <http://localhost:5173> → přihlášení jménem `admin` a výchozím heslem (změníte ho přes `VITE_DEMO_PASSWORD_HASH`).
 Demo běží úplně bez backendu (data v prohlížeči, lokální AI engine).
 
 Vlastní demo heslo:

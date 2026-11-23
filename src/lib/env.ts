@@ -19,10 +19,11 @@ export const env = {
   supabaseUrl,
   supabaseAnonKey,
   demo: {
-    email: (raw.VITE_DEMO_EMAIL ?? "admin@projectwo.com").toLowerCase(),
-    // SHA-256 of the demo password. Default = sha256("projectwo-demo").
+    /** Login name for the local (demo) sign-in. */
+    username: (raw.VITE_DEMO_USERNAME ?? "admin").trim().toLowerCase(),
+    // SHA-256 of the demo password (never the password itself).
     passwordHash:
-      raw.VITE_DEMO_PASSWORD_HASH ?? "d168875a8a155824e8519a363726b30bdb74b59a75b8f052bc36e95139537218",
+      raw.VITE_DEMO_PASSWORD_HASH ?? "4a10a5268ac9e6bec4ba1e87d1a147cf82314e357cf6ba82397cb97092749cb1",
     name: raw.VITE_DEMO_NAME ?? "Admin",
     usesDefaultPassword: !raw.VITE_DEMO_PASSWORD_HASH,
   },

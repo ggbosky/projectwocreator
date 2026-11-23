@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Eye, EyeOff, KeyRound, Lock, Mail, ShieldAlert, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, KeyRound, Lock, Mail, ShieldCheck, User } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -82,15 +82,17 @@ export function LoginPage() {
 
               <form onSubmit={onLogin} className="mt-7 space-y-4" noValidate>
                 <label className="block space-y-1.5">
-                  <span className="label">E-mail</span>
+                  <span className="label">{env.authMode === "demo" ? "Jméno" : "E-mail"}</span>
                   <Input
-                    icon={<Mail />}
-                    type="email"
+                    icon={env.authMode === "demo" ? <User /> : <Mail />}
+                    type={env.authMode === "demo" ? "text" : "email"}
                     autoComplete="username"
+                    autoCapitalize="none"
+                    spellCheck={false}
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="vy@projectwo.com"
+                    placeholder={env.authMode === "demo" ? "Jméno" : "vy@projectwo.com"}
                     autoFocus
                   />
                 </label>
@@ -183,28 +185,6 @@ export function LoginPage() {
           )}
         </AnimatePresence>
 
-        <div className="mt-7 border-t border-border/70 pt-4 text-xs text-subtle">
-          {env.authMode === "demo" ? (
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-1.5 font-medium text-warning">
-                <ShieldAlert className="size-3.5" /> Demo režim (lokální přihlášení)
-              </div>
-              <p>
-                E-mail: <code className="text-fg">{env.demo.email}</code>
-                {env.demo.usesDefaultPassword && (
-                  <>
-                    {" "}· heslo: <code className="text-fg">projectwo-demo</code> — změňte v .env!
-                  </>
-                )}
-              </p>
-              {env.supabaseMisconfigured && <p className="text-danger">VITE_AUTH_MODE=supabase, ale chybí URL / anon key → běží demo.</p>}
-            </div>
-          ) : (
-            <p className="flex items-center gap-1.5">
-              <ShieldCheck className="size-3.5 text-success" /> Zabezpečeno Supabase Auth · registrace jsou vypnuté
-            </p>
-          )}
-        </div>
       </motion.div>
     </div>
   );
